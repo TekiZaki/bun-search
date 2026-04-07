@@ -248,6 +248,7 @@ async function waitForConnection() {
 async function main() {
   const args = process.argv.slice(2);
   const isDebug = args.includes("--debug");
+  const isScrape = args.includes("--scrape");
   const noCache = args.includes("--no-cache");
 
   const outputIdx = args.indexOf("--output");
@@ -284,6 +285,16 @@ async function main() {
         process.exit(0);
       }, 500);
     }
+    return;
+  }
+
+  if (isScrape) {
+    await waitForConnection();
+    console.log(`📄 Scraping via Browser: ${query}`);
+    // 'query' will contain the URL because of how we filter args
+    const result = await sendToExtension({ type: "SCRAPE", url: query });
+    console.log(result); // This will output the full text for the AI to read
+    setTimeout(() => { wss.close(); process.exit(0); }, 500);
     return;
   }
 

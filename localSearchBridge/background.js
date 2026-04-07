@@ -81,6 +81,22 @@ function connect() {
       await performSearch(data.query, data.id);
     } else if (data.type === "DEBUG") {
       await performDebug(data.query, data.id);
+    } else if (data.type === "SCRAPE") {
+      const tab = await chrome.tabs.create({ url: data.url, active: false });
+      await waitForTab(tab.id);
+      const result = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => document.body.innerText.slice(0, 15000),
+      });
+      chrome.tabs.remove(tab.id);
+      ws.send(
+        JSON.stringify({
+          type: "RESULT",
+          id: data.id,
+          data: result[0].result,
+          status: "success",
+        }),
+      );
     }
     // PONG responses from server (if implemented) are silently ignored
   };
@@ -170,7 +186,7 @@ async function performSearch(query, requestId) {
       throw new Error("executeScript returned nothing");
     }
   } catch (error) {
-    if (tab) chrome.tabs.remove(tab.id).catch(() => {});
+    if (tab) chrome.tabs.remove(tab.id).catch(() => { });
     ws.send(
       JSON.stringify({
         type: "RESULT",
@@ -209,7 +225,7 @@ async function performDebug(query, requestId) {
       }),
     );
   } catch (error) {
-    if (tab) chrome.tabs.remove(tab.id).catch(() => {});
+    if (tab) chrome.tabs.remove(tab.id).catch(() => { });
     ws.send(
       JSON.stringify({
         type: "DEBUG_RESULT",
@@ -354,12 +370,12 @@ function debugGoogleDOM() {
   const rso = document.querySelector("div#rso");
   const rsoChildClasses = rso
     ? Array.from(rso.children)
-        .slice(0, 5)
-        .map((el) => ({
-          tag: el.tagName,
-          classes: el.className,
-          children: el.children.length,
-        }))
+      .slice(0, 5)
+      .map((el) => ({
+        tag: el.tagName,
+        classes: el.className,
+        children: el.children.length,
+      }))
     : [];
 
   return {
