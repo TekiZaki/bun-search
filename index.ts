@@ -14,6 +14,7 @@ interface SearchResult {
   link: string;
   snippet: string;
   position: number;
+  bias?: string;
 }
 
 interface SearchResponse {
@@ -62,6 +63,17 @@ function saveToCache(query: string, data: SearchResponse) {
     join(CACHE_DIR, `${key}.json`),
     JSON.stringify({ timestamp: Date.now(), data }),
   );
+}
+
+const BIAS_DB = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "bias.json"), "utf-8"));
+
+function getBias(link: string): string | null {
+  try {
+    const domain = new URL(link).hostname.replace("www.", "");
+    return BIAS_DB[domain] || null;
+  } catch (e) {
+    return null;
+  }
 }
 
 const wss = new WebSocketServer({ port: PORT });
@@ -332,11 +344,31 @@ async function main() {
       console.log("   → Run with --debug to inspect the live DOM:");
       console.log(`   bun run index.ts "${query}" --debug`);
     } else {
+      const biasCounts: Record<string, number> = {};
+
       response.results.forEach((r) => {
-        console.log(`[${r.position}] ${r.title}`);
+        const lean = getBias(r.link);
+        const biasLabel = lean ? `[${lean.toUpperCase()}] ` : "";
+        if (lean) biasCounts[lean] = (biasCounts[lean] || 0) + 1;
+
+        console.log(`[${r.position}] ${biasLabel}${r.title}`);
         console.log(`    ${r.link}`);
         console.log(`    ${r.snippet}\n`);
       });
+
+      // Ground News style Percentage Summary
+      const biasTotal = Object.values(biasCounts).reduce((a, b) => a + b, 0);
+      if (biasTotal > 0) {
+        console.log("📰 News Lean Distribution (Ground News style):");
+        const summary = Object.entries(biasCounts)
+          .sort(([, a], [, b]) => b - a)
+          .map(([lean, count]) => {
+            const pct = Math.round((count / biasTotal) * 100);
+            return `   • ${lean}: ${pct}%`;
+          })
+          .join("\n");
+        console.log(summary + "\n");
+      }
     }
 
     // Always show AI Overview if present, regardless of --output
