@@ -1,0 +1,73 @@
+{
+  "query": "Bun vs Node performance",
+  "timestamp": "2026-02-17T11:03:38.121Z",
+  "source": "Chrome Extension Scraping",
+  "results": [
+    {
+      "link": "https://strapi.io/blog/bun-vs-nodejs-performance-comparison-guide",
+      "position": 1,
+      "snippet": "30 Oct 2025 — In Docker, Bun's base image weighs around 55 MB versus the official Node image at ~120 MB, shaving build and deploy times. For CI, swapping npm ...Read more",
+      "title": "Bun vs Node.js 2025: Performance, Speed & Developer ..."
+    },
+    {
+      "link": "https://evertheylen.eu/p/node-vs-bun/",
+      "position": 2,
+      "snippet": "4 Oct 2024 — In this article I'll be comparing the performance of Bun vs Node. In particular (as Bun is many things), I will focus on their performance as the runtime for your server-side JavaScript code.Read more",
+      "title": "Node vs Bun: no backend performance difference - Evert Heylen"
+    },
+    {
+      "link": "https://idwebhost.com/blog/bun-vs-nodejs/",
+      "position": 3,
+      "snippet": "30 Sept 2024 — Perbandingan Performa Bun vs NodeJs. Ketika berbicara tentang Bun vs. Node.js, salah satu aspek yang paling sering dibahas adalah performance. Mari kita lihat beberapa perbandingan kinerja antara kedua runtime ini berdasarkan hasil uji dari beberapa pengembang. Tugas yang Membutuhkan CPU Tinggi. Untuk ...Read more",
+      "title": "Bun vs NodeJs, Runtime JavaScript Mana yang Lebih Baik?"
+    },
+    {
+      "link": "https://blog.stackademic.com/javascript-runtime-battle-node-js-vs-deno-vs-bun-which-should-you-pick-d3e662a37c84",
+      "position": 4,
+      "snippet": "20 Aug 2025 — Also, while Bun is fast, not every application needs that level of performance. If your app works fine with Node.js, the speed boost might not be worth the risk of adopting newer technology. When to Choose Bun. Pick Bun if: Performance is crucial for your project; You're frustrated with slow build ...Read more",
+      "title": "Node.js vs Deno vs Bun — Which Should You Pick?"
+    },
+    {
+      "link": "https://medium.com/@sonampatel_97163/bun-vs-node-js-i-benchmark-every-release-here-is-the-exact-point-where-node-lost-the-crown-ce672e3b7ff6",
+      "position": 5,
+      "snippet": "The crown did not slip because Node became bad. Node stayed solid. The crown slipped because Bun crossed a threshold where the win was no longer situational.Read more",
+      "title": "Bun Vs. Node.js: I Benchmark Every Release"
+    },
+    {
+      "link": "https://snyk.io/blog/javascript-runtime-compare-node-deno-bun/",
+      "position": 6,
+      "snippet": "5 Sept 2023 — Bun is clearly the winner in terms of speed, but as it is still receiving updates for Node.js compatibility, there are risks to using it in production.Read more",
+      "title": "Node.js vs. Deno vs. Bun: Performance & JavaScript ..."
+    },
+    {
+      "link": "https://refine.dev/blog/bun-js-vs-node/",
+      "position": 7,
+      "snippet": "12 Aug 2024 — This optimized design allows Bun to deliver better performance in terms of both speed and memory usage compared to other runtimes. Low-Level Implementation: The Bun runtime is built using Zig, a relatively new low-level programming language. Zig's characteristics enable developers to write code ...Read more",
+      "title": "Bun vs. Node.js"
+    },
+    {
+      "link": "https://strapi.io/blog/bun-vs-nodejs-performance-comparison-guide#:~:text=In%20brief%3A,separate%20tools%20for%20each%20function",
+      "position": 8,
+      "snippet": "",
+      "title": "Bun vs Node.js 2025: Performance, Speed & Developer Guide"
+    },
+    {
+      "link": "https://blog.racknerd.com/bun-vs-npm-which-javascript-package-manager-should-you-use/#:~:text=One%20of%20Bun's%20biggest%20selling,Zig%2C%20reducing%20installation%20time%20drastically.",
+      "position": 9,
+      "snippet": "",
+      "title": "BUN vs. NPM: Which JavaScript Package Manager Should You Use"
+    },
+    {
+      "link": "https://javascript.plainenglish.io/next-js-at-the-speed-of-bun-why-the-runtime-finally-matters-5d974a785bce#:~:text=And%20that%20speed%20compounds%20inside,manager%20into%20a%20single%20system.",
+      "position": 10,
+      "snippet": "",
+      "title": "Next.js at the Speed of Bun: Why the Runtime Finally Matters"
+    },
+    {
+      "link": "https://bun.com/#:~:text=Bun%20is%20designed%20as%20a,complexity%2C%20and%20multiply%20developer%20productivity.",
+      "position": 11,
+      "snippet": "",
+      "title": "Bun — A fast all-in-one JavaScript runtime"
+    }
+  ]
+}

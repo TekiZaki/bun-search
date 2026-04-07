@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Local Search Bridge",
+  "version": "1.1",
+  "permissions": ["tabs", "scripting", "alarms"],
+  "host_permissions": ["https://www.google.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
