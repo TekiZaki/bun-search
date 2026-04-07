@@ -1,5 +1,6 @@
 // index.ts
 import { WebSocketServer, WebSocket } from "ws";
+import { parse } from "node-html-parser";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
 import { join } from "path";
 import { dirname } from "path";
@@ -105,6 +106,12 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     console.log("❌ Chrome Extension Disconnected");
     clientConnected = false;
+    // Reject all pending requests
+    for (const [id, request] of pendingRequests.entries()) {
+      clearTimeout(request.timeout);
+      request.reject(new Error("Chrome Extension disconnected"));
+      pendingRequests.delete(id);
+    }
   });
 });
 
@@ -292,9 +299,22 @@ async function main() {
     await waitForConnection();
     console.log(`📄 Scraping via Browser: ${query}`);
     // 'query' will contain the URL because of how we filter args
-    const result = await sendToExtension({ type: "SCRAPE", url: query });
-    console.log(result); // This will output the full text for the AI to read
-    setTimeout(() => { wss.close(); process.exit(0); }, 500);
+    const html = await sendToExtension({ type: "SCRAPE", url: query });
+
+    if (typeof html === "string") {
+      const root = parse(html);
+      // Remove noise
+      root.querySelectorAll("script, style, iframe, noscript").forEach((el: any) => el.remove());
+      const cleanText = root.textContent.replace(/\s+/g, " ").trim().slice(0, 20000);
+      console.log(cleanText);
+    } else {
+      console.log(html);
+    }
+
+    setTimeout(() => {
+      wss.close();
+      process.exit(0);
+    }, 500);
     return;
   }
 

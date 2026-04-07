@@ -82,21 +82,44 @@ function connect() {
     } else if (data.type === "DEBUG") {
       await performDebug(data.query, data.id);
     } else if (data.type === "SCRAPE") {
-      const tab = await chrome.tabs.create({ url: data.url, active: false });
-      await waitForTab(tab.id);
-      const result = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => document.body.innerText.slice(0, 15000),
-      });
-      chrome.tabs.remove(tab.id);
-      ws.send(
-        JSON.stringify({
-          type: "RESULT",
-          id: data.id,
-          data: result[0].result,
-          status: "success",
-        }),
-      );
+      let tab;
+      try {
+        tab = await chrome.tabs.create({ url: data.url, active: false });
+        // Use a more relaxed wait: timeout after 10s but continue anyway, or wait for complete
+        try {
+          await waitForTab(tab.id);
+        } catch (e) {
+          console.warn("Wait for tab timed out, attempting scrape anyway...");
+        }
+
+        // Small delay for JS execution
+        await new Promise(r => setTimeout(r, 1000));
+
+        const result = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => document.documentElement.outerHTML,
+        });
+
+        ws.send(
+          JSON.stringify({
+            type: "RESULT",
+            id: data.id,
+            data: result[0].result,
+            status: "success",
+          }),
+        );
+      } catch (error) {
+        ws.send(
+          JSON.stringify({
+            type: "RESULT",
+            id: data.id,
+            error: error.message,
+            status: "failed",
+          }),
+        );
+      } finally {
+        if (tab) chrome.tabs.remove(tab.id).catch(() => { });
+      }
     }
     // PONG responses from server (if implemented) are silently ignored
   };
@@ -137,7 +160,10 @@ function stopHeartbeat() {
 }
 
 // ─── Tab Helpers ──────────────────────────────────────────────────────────────
-function waitForTab(tabId) {
+async function waitForTab(tabId) {
+  const tab = await chrome.tabs.get(tabId);
+  if (tab.status === "complete") return;
+
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener);

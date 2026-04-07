@@ -15,6 +15,7 @@ Bun Search Bridge is a local command-line tool that retrieves Google Search resu
 ## Prerequisites
 
 To run this project, you must have the following installed on your system:
+
 * **Bun** (JavaScript runtime and package manager)
 * **Google Chrome** (for loading the required extension)
 
@@ -23,6 +24,7 @@ To run this project, you must have the following installed on your system:
 ## Installation and Setup
 
 ### 1. Install Dependencies
+
 Navigate to the root directory of the project and install the required Node modules using Bun.
 
 ```bash
@@ -31,6 +33,7 @@ bun link
 ```
 
 ### 2. Install the Chrome Extension
+
 The CLI requires the local Chrome extension to function as the scraping engine.
 
 1. Open Google Chrome and navigate to `chrome://extensions/`.
@@ -56,16 +59,19 @@ bun-search "how to center a div"
 You can modify the behavior of the search using the following flags:
 
 * **Export to JSON (`--output`):** Saves the search results and AI Overview to a specified JSON file.
+
     ```bash
     bun-search "latest space news" --output results.json
     ```
 
 * **Bypass Cache (`--no-cache`):** Forces the tool to perform a live search in the browser instead of reading from the local cache.
+
     ```bash
     bun-search "weather today" --no-cache
     ```
 
 * **Debug Mode (`--debug`):** Instructs the extension to run a diagnostic script on the search page instead of scraping results. This is highly useful for updating selectors if Google changes its DOM structure.
+
     ```bash
     bun-search "test query" --debug
     ```
@@ -74,9 +80,10 @@ You can modify the behavior of the search using the following flags:
 
 ## How It Works
 
-1.  **Server Initialization:** The Bun script (`index.ts`) launches a WebSocket server on port `8787` and waits for a connection.
-2.  **Extension Connection:** The Chrome extension's background service worker (`background.js`) continuously attempts to connect to this WebSocket. A keep-alive alarm ensures the service worker does not sleep.
-3.  **Search Execution:** When a query is submitted via the CLI, the server sends a message to the extension.
-4.  **Browser Automation:** The extension creates a new, inactive background tab pointed to the Google Search URL.
-5.  **Data Extraction:** Once the tab loads, the extension injects a content script that scrapes the standard results and recursively searches Shadow roots for AI Overviews.
-6.  **Response:** The scraped data is formatted, sent back through the WebSocket, displayed in the terminal, and saved to the local cache.
+1. **Server Initialization:** The Bun script (`index.ts`) launches a WebSocket server on port `8787` and waits for a connection.
+2. **Extension Connection:** The Chrome extension's background service worker (`background.js`) continuously attempts to connect to this WebSocket. A keep-alive alarm ensures the service worker does not sleep.
+3. **Search Execution:** When a query is submitted via the CLI, the server sends a message to the extension.
+4. **Browser Automation:** The extension creates a new, inactive background tab pointed to the Google Search URL.
+5. **Data Extraction:** Once the tab loads, the extension injects a content script that scrapes the standard results and recursively searches Shadow roots for AI Overviews.
+6. **Response:** The scraped data is formatted, sent back through the WebSocket, displayed in the terminal, and saved to the local cache.
+7. 
