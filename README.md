@@ -48,7 +48,7 @@ Start the search process by running the `index.ts` file via Bun and providing yo
 ### Basic Search
 
 ```bash
-bun run index.ts "how to center a div"
+bun-search "how to center a div"
 ```
 
 ### Command Line Options
@@ -57,17 +57,17 @@ You can modify the behavior of the search using the following flags:
 
 * **Export to JSON (`--output`):** Saves the search results and AI Overview to a specified JSON file.
     ```bash
-    bun run index.ts "latest space news" --output results.json
+    bun-search "latest space news" --output results.json
     ```
 
 * **Bypass Cache (`--no-cache`):** Forces the tool to perform a live search in the browser instead of reading from the local cache.
     ```bash
-    bun run index.ts "weather today" --no-cache
+    bun-search "weather today" --no-cache
     ```
 
 * **Debug Mode (`--debug`):** Instructs the extension to run a diagnostic script on the search page instead of scraping results. This is highly useful for updating selectors if Google changes its DOM structure.
     ```bash
-    bun run index.ts "test query" --debug
+    bun-search "test query" --debug
     ```
 
 ---
