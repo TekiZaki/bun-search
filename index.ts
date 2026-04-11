@@ -1,13 +1,17 @@
-// index.ts
+import { GoogleGenAI } from "@google/genai";
 import { WebSocketServer, WebSocket } from "ws";
 import { parse } from "node-html-parser";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
 import { join } from "path";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, ".env") });
 
 const PORT = 8787;
-const CACHE_DIR = join(dirname(fileURLToPath(import.meta.url)), ".cache");
+const CACHE_DIR = join(__dirname, ".cache");
 
 interface SearchResult {
   title: string;
@@ -65,7 +69,7 @@ function saveToCache(query: string, data: SearchResponse) {
   );
 }
 
-const BIAS_DB = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "bias.json"), "utf-8"));
+const BIAS_DB = JSON.parse(readFileSync(join(__dirname, "bias.json"), "utf-8"));
 
 function getBias(link: string): string | null {
   try {
@@ -149,6 +153,7 @@ function sendToExtension(payload: object): Promise<any> {
 async function performSearchViaExtension(
   query: string,
   noCache = false,
+  quiet = false,
 ): Promise<SearchResponse> {
   if (!clientConnected) throw new Error("No Chrome Extension connected.");
 
@@ -160,11 +165,11 @@ async function performSearchViaExtension(
     }
   }
 
-  console.log(`🔍 Request sent to browser for: "${query}"`);
+  if (!quiet) console.log(`🔍 Request sent to browser for: "${query}"`);
   const data = await sendToExtension({ type: "SEARCH", query });
 
   // Log which selector strategy worked
-  if (data?.tried) {
+  if (!quiet && data?.tried) {
     const winner = data.tried.find((t: any) => t.count > 0);
     if (winner)
       console.log(
@@ -174,15 +179,17 @@ async function performSearchViaExtension(
   }
 
   // Log AI Overview status
-  if (data?.aiOverview) {
-    const src = data.aiOverviewSelector
-      ? ` via ${data.aiOverviewSelector}`
-      : "";
-    console.log(
-      `   🤖 AI Overview captured (${data.aiOverview.length} chars${src})`,
-    );
-  } else {
-    console.log(`   ℹ️  No AI Overview for this query`);
+  if (!quiet) {
+    if (data?.aiOverview) {
+      const src = data.aiOverviewSelector
+        ? ` via ${data.aiOverviewSelector}`
+        : "";
+      console.log(
+        `   🤖 AI Overview captured (${data.aiOverview.length} chars${src})`,
+      );
+    } else {
+      console.log(`   ℹ️  No AI Overview for this query`);
+    }
   }
 
   return {
@@ -250,6 +257,28 @@ async function runDebug(query: string): Promise<void> {
   }
 }
 
+async function getSummary(
+  text: string,
+  modelName: string = process.env.GEMINI_MODEL || "gemma-4-26b-a4b-it",
+): Promise<string> {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY not found in .env");
+  }
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: `Summarize the following search results/web content. Focus on objectivity, key facts, and providing a cohesive summary. Output ONLY the summary text, no conversational filler or preamble.\n\n${text}`,
+    });
+    return response.text || "";
+  } catch (err: any) {
+    if (err.message?.includes("RESOURCE_EXHAUSTED")) {
+      throw new Error(`Gemini Quota Exhausted (429). Please wait or switch models. Detalis: ${err.message}`);
+    }
+    throw err;
+  }
+}
+
 async function waitForConnection() {
   let waitTime = 0;
   while (!clientConnected && waitTime < 10000) {
@@ -268,6 +297,7 @@ async function main() {
   const args = process.argv.slice(2);
   const isDebug = args.includes("--debug");
   const isScrape = args.includes("--scrape");
+  const isSummarize = args.includes("--summarize");
   const noCache = args.includes("--no-cache");
 
   const outputIdx = args.indexOf("--output");
@@ -283,7 +313,7 @@ async function main() {
 
   if (!query) {
     console.log(
-      "Usage: bun run index.ts <query> [--output filename.json] [--debug] [--no-cache]",
+      "Usage: bun-search <query> [--summarize] [--scrape] [--output filename.json] [--debug] [--no-cache]",
     );
     process.exit(1);
   }
@@ -309,16 +339,27 @@ async function main() {
 
   if (isScrape) {
     await waitForConnection();
-    console.log(`📄 Scraping via Browser: ${query}`);
+    if (!isSummarize) console.log(`📄 Scraping via Browser: ${query}`);
     // 'query' will contain the URL because of how we filter args
     const html = await sendToExtension({ type: "SCRAPE", url: query });
 
     if (typeof html === "string") {
       const root = parse(html);
       // Remove noise
-      root.querySelectorAll("script, style, iframe, noscript").forEach((el: any) => el.remove());
-      const cleanText = root.textContent.replace(/\s+/g, " ").trim().slice(0, 20000);
-      console.log(cleanText);
+      root
+        .querySelectorAll("script, style, iframe, noscript")
+        .forEach((el: any) => el.remove());
+      const cleanText = root.textContent
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 20000);
+
+      if (isSummarize) {
+        const summary = await getSummary(cleanText);
+        console.log(summary);
+      } else {
+        console.log(cleanText);
+      }
     } else {
       console.log(html);
     }
@@ -330,49 +371,70 @@ async function main() {
     return;
   }
 
-  console.log(`🚀 Starting search for: "${query}"`);
   const start = performance.now();
+  if (!isSummarize) console.log(`🚀 Starting search for: "${query}"`);
 
   try {
-    const response = await performSearchViaExtension(query, noCache);
+    const response = await performSearchViaExtension(
+      query,
+      noCache,
+      isSummarize,
+    );
     const elapsed = (performance.now() - start).toFixed(2);
 
-    console.log(`⚡ Done in ${elapsed}ms\n`);
+    if (!isSummarize) {
+      console.log(`⚡ Done in ${elapsed}ms\n`);
+    }
 
     if (response.results.length === 0) {
-      console.log("⚠️  No results found.");
-      console.log("   → Run with --debug to inspect the live DOM:");
-      console.log(`   bun run index.ts "${query}" --debug`);
+      if (!isSummarize) {
+        console.log("⚠️  No results found.");
+        console.log("   → Run with --debug to inspect the live DOM:");
+        console.log(`   bun run index.ts "${query}" --debug`);
+      }
     } else {
-      const biasCounts: Record<string, number> = {};
+      if (isSummarize) {
+        let fullText = "";
+        if (response.aiOverview) {
+          fullText += `AI OVERVIEW: ${response.aiOverview}\n\n`;
+        }
+        fullText += response.results
+          .map((r) => `[${r.title}]\n${r.snippet}`)
+          .join("\n\n");
 
-      response.results.forEach((r) => {
-        const lean = getBias(r.link);
-        const biasLabel = lean ? `[${lean.toUpperCase()}] ` : "";
-        if (lean) biasCounts[lean] = (biasCounts[lean] || 0) + 1;
+        const summary = await getSummary(fullText);
+        console.log(summary);
+      } else {
+        const biasCounts: Record<string, number> = {};
 
-        console.log(`[${r.position}] ${biasLabel}${r.title}`);
-        console.log(`    ${r.link}`);
-        console.log(`    ${r.snippet}\n`);
-      });
+        response.results.forEach((r) => {
+          const lean = getBias(r.link);
+          const biasLabel = lean ? `[${lean.toUpperCase()}] ` : "";
+          if (lean) biasCounts[lean] = (biasCounts[lean] || 0) + 1;
 
-      // Ground News style Percentage Summary
-      const biasTotal = Object.values(biasCounts).reduce((a, b) => a + b, 0);
-      if (biasTotal > 0) {
-        console.log("📰 News Lean Distribution (Ground News style):");
-        const summary = Object.entries(biasCounts)
-          .sort(([, a], [, b]) => b - a)
-          .map(([lean, count]) => {
-            const pct = Math.round((count / biasTotal) * 100);
-            return `   • ${lean}: ${pct}%`;
-          })
-          .join("\n");
-        console.log(summary + "\n");
+          console.log(`[${r.position}] ${biasLabel}${r.title}`);
+          console.log(`    ${r.link}`);
+          console.log(`    ${r.snippet}\n`);
+        });
+
+        // Ground News style Percentage Summary
+        const biasTotal = Object.values(biasCounts).reduce((a, b) => a + b, 0);
+        if (biasTotal > 0) {
+          console.log("📰 News Lean Distribution (Ground News style):");
+          const summary = Object.entries(biasCounts)
+            .sort(([, a], [, b]) => b - a)
+            .map(([lean, count]) => {
+              const pct = Math.round((count / biasTotal) * 100);
+              return `   • ${lean}: ${pct}%`;
+            })
+            .join("\n");
+          console.log(summary + "\n");
+        }
       }
     }
 
     // Always show AI Overview if present, regardless of --output
-    if (response.aiOverview) {
+    if (response.aiOverview && !isSummarize) {
       console.log("🤖 AI Overview:");
       console.log(`   ${response.aiOverview}\n`);
     }
@@ -397,13 +459,16 @@ async function main() {
 
     saveToCache(query, response);
   } catch (err) {
-    console.error("❌ Error:", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("EADDRINUSE")) {
+      console.error("❌ Error: Port 8787 is already in use. A previous instance might still be closing.");
+    } else {
+      console.error("❌ Error:", msg);
+    }
     process.exit(1);
   } finally {
-    setTimeout(() => {
-      wss.close();
-      process.exit(0);
-    }, 1000);
+    wss.close();
+    process.exit(0);
   }
 }
 
